@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Universo Cósmico 3D</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #010103;
+      color: #ffffff;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    #webgl-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* Pantalla de Bloqueo */
+    #lock-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(1, 1, 3, 0.94);
+      backdrop-filter: blur(16px);
+      transition: opacity 1s ease;
+    }
+
+    .lock-card {
+      background: rgba(255, 255, 255, 0.03);
+      padding: 40px 30px;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 0, 200, 0.25);
+      box-shadow: 0 0 50px rgba(255, 0, 150, 0.2);
+      text-align: center;
+      max-width: 380px;
+      width: 90%;
+    }
+
+    .lock-card h1 { font-size: 1.6rem; margin-bottom: 8px; color: #ff77e9; }
+    .lock-card p { font-size: 0.9rem; margin-bottom: 20px; color: #a3a3c2; }
+
+    .lock-card input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 12px;
+      border-radius: 12px;
+      border: 1px solid #ff00ab;
+      background: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      font-size: 1rem;
+      text-align: center;
+      outline: none;
+    }
+
+    .lock-card button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #ff00ab, #7928ca);
+      color: white;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .lock-card button:hover {
+      transform: scale(1.02);
+      box-shadow: 0 0 25px rgba(255, 0, 171, 0.5);
+    }
+
+    #error-msg { color: #ff4d6d; font-size: 0.85rem; margin-top: 10px; display: none; }
+
+    /* Capa de Etiquetas Glassmorphism */
+    #ui-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      display: none;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 1.5s ease;
+    }
+
+    .galaxy-label {
+      position: absolute;
+      background: rgba(15, 10, 25, 0.65);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 8px 18px;
+      border-radius: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #ffffff;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      pointer-events: auto;
+      cursor: pointer;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+      transform: translate(-50%, -50%);
+      white-space: nowrap;
+      transition: background 0.3s, border-color 0.3s, transform 0.2s ease;
+    }
+
+    .galaxy-label:hover {
+      background: rgba(45, 20, 75, 0.85);
+      border-color: rgba(255, 119, 233, 0.8);
+      box-shadow: 0 0 25px rgba(255, 0, 171, 0.6);
+      transform: translate(-50%, -50%) scale(1.08);
+    }
+
+    /* Estilo Especial para las Fotos Orbitando */
+    .photo-orbit-label {
+      background: rgba(255, 0, 171, 0.25);
+      border: 1px solid #ff77e9;
+      box-shadow: 0 0 20px rgba(255, 0, 171, 0.6);
+      font-weight: 600;
+    }
+
+    .photo-orbit-label:hover {
+      background: rgba(255, 0, 171, 0.6);
+      box-shadow: 0 0 35px rgba(255, 0, 171, 0.9);
+    }
+
+    #central-core {
+      background: rgba(255, 0, 171, 0.3);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 0.75rem;
+      padding: 4px 12px;
+      border-radius: 20px;
+      box-shadow: 0 0 20px rgba(255, 0, 171, 0.8);
+    }
+
+    /* Modal */
+    #modal {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 30;
+      background: rgba(10, 8, 18, 0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 0, 171, 0.35);
+      padding: 24px;
+      border-radius: 20px;
+      max-width: 400px;
+      width: 90%;
+      max-height: 85vh;
+      overflow-y: auto;
+      text-align: center;
+      box-shadow: 0 0 50px rgba(255, 0, 171, 0.3);
+    }
+
+    #modal h3 { color: #ff77e9; margin-bottom: 12px; font-size: 1.2rem; }
+    
+    #modal-img {
+      width: 100%;
+      max-height: 300px;
+      object-fit: cover;
+      border-radius: 12px;
+      margin-bottom: 14px;
+      border: 1px solid rgba(255, 0, 171, 0.4);
+      display: none;
+    }
+
+    #modal p { color: #d1d1e0; line-height: 1.6; font-size: 0.92rem; margin-bottom: 20px; text-align: left; }
+
+    #modal button {
+      background: rgba(255, 0, 171, 0.2);
+      color: white;
+      border: 1px solid #ff00ab;
+      padding: 8px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: background 0.3s;
+    }
+
+    #modal button:hover {
+      background: rgba(255, 0, 171, 0.5);
+    }
+
+    /* Panel de Notas Lateral */
+    #notes-toggle-btn {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 25;
+      background: rgba(15, 10, 25, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 0, 171, 0.5);
+      color: #ffffff;
+      padding: 12px 20px;
+      border-radius: 30px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 0 20px rgba(255, 0, 171, 0.3);
+      transition: all 0.3s ease;
+      display: none;
+    }
+
+    #notes-toggle-btn:hover {
+      background: rgba(255, 0, 171, 0.3);
+      border-color: #ff77e9;
+      transform: scale(1.05);
+      box-shadow: 0 0 30px rgba(255, 0, 171, 0.6);
+    }
+
+    #notes-panel {
+      position: fixed;
+      top: 0;
+      right: -400px;
+      width: 360px;
+      height: 100vh;
+      z-index: 28;
+      background: rgba(10, 8, 18, 0.92);
+      backdrop-filter: blur(20px);
+      border-left: 1px solid rgba(255, 0, 171, 0.3);
+      padding: 30px 20px;
+      box-shadow: -10px 0 40px rgba(0, 0, 0, 0.8);
+      transition: right 0.4s cubic-bezier(0.1, 0.9, 0.2, 1);
+      overflow-y: auto;
+    }
+
+    #notes-panel.open {
+      right: 0;
+    }
+
+    .notes-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 12px;
+    }
+
+    .notes-header h2 {
+      font-size: 1.2rem;
+      color: #ff77e9;
+    }
+
+    .close-notes-btn {
+      background: transparent;
+      border: none;
+      color: #a3a3c2;
+      font-size: 1.4rem;
+      cursor: pointer;
+    }
+
+    .note-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 14px;
+      cursor: pointer;
+      transition: border-color 0.3s, transform 0.2s;
+    }
+
+    .note-card:hover {
+      border-color: rgba(255, 119, 233, 0.5);
+      transform: translateY(-2px);
+    }
+
+    .note-card h4 {
+      color: #c77dff;
+      font-size: 0.95rem;
+      margin-bottom: 6px;
+    }
+
+    .note-card p {
+      color: #d1d1e0;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="webgl-container"></div>
+
+  <div id="lock-screen">
+    <div class="lock-card">
+      <h1>Universo Privado 🌌</h1>
+      <p>Dos caminos distintos terminaron encontrándose.
+
+Para abrir lo que sigue, tendrás que juntar nuestras historias:
+
+Primero, suma los días en que llegamos al mundo.
+Después, suma los meses que nos vieron llegar.:</p>
+      <input type="password" id="password-input" placeholder="Contraseña">
+      <button onclick="checkPassword()">Crear Galaxia</button>
+      <p id="error-msg">Contraseña incorrecta... Inténtalo de nuevo ❤️</p>
+    </div>
+  </div>
+
+  <!-- Capa de Etiquetas Flotantes en la Galaxia -->
+  <div id="ui-layer">
+    <div class="galaxy-label" id="central-core" onclick="openModal('TÚ 💖', 'Creo que una de las cosas que más me gustan de ti es que eres tú. Con tus cosas buenas, tus rarezas, tus momentos de nerd, tus momentos emo, tus silencios y hasta esas cositas que a veces me hacen hacerte carotas jajaja. Me gustas así, con todo lo que te hace ser tú. Y me hace muy feliz que, entre tantas personas, nos hayamos vuelto a encontrar.')">
+      TÚ 💖
+    </div>
+
+    <!-- ICONOS/ETIQUETAS EXCLUSIVAS DE FOTO 1 Y FOTO 2 ORBITANDO -->
+    <div class="galaxy-label photo-orbit-label" id="photo-label-1" onclick="openModal('📸', '', 'foto 1.jpeg')">
+      📷 
+    </div>
+    <div class="galaxy-label photo-orbit-label" id="photo-label-2" onclick="openModal('📸', '', 'foton 2.jpeg')">
+      📸 
+    </div>
+
+    <!-- NOTAS DE TEXTO (SIN FOTOS) -->
+    <div class="galaxy-label" id="label-1" onclick="openModal('1. Tu apoyo 🫶🏻', 'Siempre me reconforta tu presencia en mi vida. A veces no necesito que me digas qué hacer ni que soluciones nada, simplemente saber que estás ahí ya me hace sentir mejor. Me gusta mucho saber que puedo contar contigo y que tengo a alguien con quien puedo compartir tanto lo bonito como lo difícil.')">
+      🫶🏻 Tu apoyo
+    </div>
+    <div class="galaxy-label" id="label-2" onclick="openModal('2. Tu forma de cuidarme', 'Me encanta que tengas tus propias formas de cuidarme, incluso en cosas que probablemente tú ni notas. Que estés pendiente, que me preguntes cómo estoy, que quieras ayudarme o que simplemente busques hacerme sentir bien. Son esas pequeñas cosas las que yo sí veo y valoro muchísimo.')">
+      ✨ Tu forma de cuidarme
+    </div>
+    <div class="galaxy-label" id="label-3" onclick="openModal('3. Lo fácil que se siente contigo', 'Me gusta poder estar contigo y simplemente ser yo. Hablar de cualquier tontería, reírnos por cosas que probablemente a nadie más le darían risa, quedarnos en silencio o hacer literalmente nada. Contigo siento que no siempre tenemos que estar haciendo algo especial para pasarla bien.')">
+      🍃 Lo fácil que se siente
+    </div>
+    <div class="galaxy-label" id="label-4" onclick="openModal('4. Tus detalles', 'Hay muchas cosas que haces que quizá para ti son normales, pero para mí no pasan desapercibidas. Tus flores, tus detalles, la forma en que buscas consentirme y hasta esas pequeñas cosas que haces cuando sabes que necesito cariño. Me hacen sentir muy querida y sí, aunque a veces no te lo diga, me derriten.')">
+      🌸 Tus detalles
+    </div>
+    <div class="galaxy-label" id="label-5" onclick="openModal('5. La tranquilidad que me das', 'Me gusta mucho la sensación de tranquilidad que tengo cuando estoy contigo. No porque todo sea perfecto, sino porque puedo simplemente disfrutar de estar a tu lado sin pensar demasiado. Después de tantas cosas, encontrar a alguien con quien puedo sentir esa calma se siente muy bonito.')">
+      🌌 La tranquilidad que me das
+    </div>
+    <div class="galaxy-label" id="label-6" onclick="openModal('6. Nosotros', 'Me gusta mucho lo que estamos construyendo, incluso sabiendo que todavía estamos aprendiendo un montón el uno del otro. No quiero correr ni idealizar nada, quiero que podamos ir descubriéndonos poco a poco y seguir eligiéndonos desde lo que somos de verdad. Y honestamente, me emociona ver hasta dónde puede llegar esto.')">
+      👩‍❤️‍👨 Nosotros
+    </div>
+  </div>
+
+  <div id="modal">
+    <h3 id="modal-title"></h3>
+    <img id="modal-img" src="" alt="Fotografía">
+    <p id="modal-text"></p>
+    <button onclick="closeModal()">Cerrar</button>
+  </div>
+
+  <!-- Botón y Panel de Notas Lateral -->
+  <button id="notes-toggle-btn" onclick="toggleNotesPanel()">📜 Ver todas las notas</button>
+
+  <div id="notes-panel">
+    <div class="notes-header">
+      <h2>Nuestras Notas 💖</h2>
+      <button class="close-notes-btn" onclick="toggleNotesPanel()">&times;</button>
+    </div>
+
+    <div class="note-card" onclick="openModal('TÚ 💖', 'Creo que una de las cosas que más me gustan de ti es que eres tú. Con tus cosas buenas, tus rarezas, tus momentos de nerd, tus momentos emo, tus silencios y hasta esas cositas que a veces me hacen hacerte carotas jajaja. Me gustas así, con todo lo que te hace ser tú. Y me hace muy feliz que, entre tantas personas, nos hayamos vuelto a encontrar.')">
+      <h4>TÚ 💖 (Núcleo)</h4>
+      <p>Creo que una de las cosas que más me gustan de ti es que eres tú...</p>
+    </div>
+
+    <div class="note-card" onclick="openModal('1. Tu apoyo 🫶🏻', 'Siempre me reconforta tu presencia en mi vida. A veces no necesito que me digas qué hacer ni que soluciones nada, simplemente saber que estás ahí ya me hace sentir mejor. Me gusta mucho saber que puedo contar contigo y que tengo a alguien con quien puedo compartir tanto lo bonito como lo difícil.')">
+      <h4>1. Tu apoyo 🫶🏻</h4>
+      <p>Siempre me reconforta tu presencia en mi vida...</p>
+    </div>
+
+    <div class="note-card" onclick="openModal('2. Tu forma de cuidarme', 'Me encanta que tengas tus propias formas de cuidarme, incluso en cosas que probablemente tú ni notas. Que estés pendiente, que me preguntes cómo estoy, que quieras ayudarme o que simplemente busques hacerme sentir bien. Son esas pequeñas cosas las que yo sí veo y valoro muchísimo.')">
+      <h4>2. Tu forma de cuidarme</h4>
+      <p>Me encanta que tengas tus propias formas de cuidarme...</p>
+    </div>
+
+    <div class="note-card" onclick="openModal('3. Lo fácil que se siente contigo', 'Me gusta poder estar contigo y simplemente ser yo. Hablar de cualquier tontería, reírnos por cosas que probablemente a nadie más le darían risa, quedarnos en silencio o hacer literalmente nada. Contigo siento que no siempre tenemos que estar haciendo algo especial para pasarla bien.')">
+      <h4>3. Lo fácil que se siente contigo</h4>
+      <p>Me gusta poder estar contigo y simplemente ser yo...</p>
+    </div>
+
+    <div class="note-card" onclick="openModal('4. Tus detalles', 'Hay muchas cosas que haces que quizá para ti son normales, pero para mí no pasan desapercibidas. Tus flores, tus detalles, la forma en que buscas consentirme y hasta esas pequeñas cosas que haces cuando sabes que necesito cariño. Me hacen sentir muy querida y sí, aunque a veces no te lo diga, me derriten.')">
+      <h4>4. Tus detalles</h4>
+      <p>Hay muchas cosas que haces que quizá para ti son normales...</p>
+    </div>
+
+    <div class="note-card" onclick="openModal('5. La tranquilidad que me das', 'Me gusta mucho la sensación de tranquilidad que tengo cuando estoy contigo. No porque todo sea perfecto, sino porque puedo simplemente disfrutar de estar a tu lado sin pensar demasiado. Después de tantas cosas, encontrar a alguien con quien puedo sentir esa calma se siente muy bonito.')">
+      <h4>5. La tranquilidad que me das</h4>
+      <p>Me gusta mucho la sensación de tranquilidad que tengo...</p>
+    </div>
+
+    <div class="note-card" onclick="openModal('6. Nosotros', 'Me gusta mucho lo que estamos construyendo, incluso sabiendo que todavía estamos aprendiendo un montón el uno del otro. No quiero correr ni idealizar nada, quiero que podamos ir descubriéndonos poco a poco y seguir eligiéndonos desde lo que somos de verdad. Y honestamente, me emociona ver hasta dónde puede llegar esto.')">
+      <h4>6. Nosotros</h4>
+      <p>Me gusta mucho lo que estamos construyendo...</p>
+    </div>
+  </div>
+
+  <script>
+    const SECRET_KEY = "3115";
+    let isForming = false;
+    let formationProgress = 0;
+
+    function checkPassword() {
+      const input = document.getElementById('password-input').value;
+      if (input === SECRET_KEY) {
+        const lockScreen = document.getElementById('lock-screen');
+        lockScreen.style.opacity = '0';
+        
+        isForming = true;
+
+        setTimeout(() => {
+          lockScreen.style.display = 'none';
+          const uiLayer = document.getElementById('ui-layer');
+          uiLayer.style.display = 'block';
+          document.getElementById('notes-toggle-btn').style.display = 'block';
+          setTimeout(() => uiLayer.style.opacity = '1', 500);
+        }, 1000);
+      } else {
+        document.getElementById('error-msg').style.display = 'block';
+      }
+    }
+
+    document.getElementById('password-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') checkPassword();
+    });
+
+    function openModal(title, text, imgSrc = null) {
+      document.getElementById('modal-title').innerText = title;
+      
+      const textElem = document.getElementById('modal-text');
+      if (text) {
+        textElem.innerText = text;
+        textElem.style.display = 'block';
+      } else {
+        textElem.style.display = 'none';
+      }
+      
+      const imgElem = document.getElementById('modal-img');
+      if (imgSrc) {
+        imgElem.src = imgSrc;
+        imgElem.style.display = 'block';
+      } else {
+        imgElem.style.display = 'none';
+      }
+
+      document.getElementById('modal').style.display = 'block';
+    }
+
+    function closeModal() {
+      document.getElementById('modal').style.display = 'none';
+    }
+
+    function toggleNotesPanel() {
+      const panel = document.getElementById('notes-panel');
+      panel.classList.toggle('open');
+    }
+
+    function createCircleTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+
+      const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      gradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.8)');
+      gradient.addColorStop(0.7, 'rgba(255, 255, 255, 0.2)');
+      gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(32, 32, 32, 0, Math.PI * 2);
+      ctx.fill();
+
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    const roundStarTexture = createCircleTexture();
+
+    // Three.js Setup
+    const container = document.getElementById('webgl-container');
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x010103, 0.012);
+
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 22, 35);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxDistance = 60;
+    controls.minDistance = 15;
+
+    // Luz del Núcleo
+    const pointLight = new THREE.PointLight(0xff00ab, 4, 60);
+    pointLight.position.set(0, 0, 0);
+    scene.add(pointLight);
+
+    // Fondo de Estrellas
+    const backgroundStarsCount = 3500;
+    const bgGeometry = new THREE.BufferGeometry();
+    const bgPositions = new Float32Array(backgroundStarsCount * 3);
+
+    for (let i = 0; i < backgroundStarsCount; i++) {
+      bgPositions[i * 3] = (Math.random() - 0.5) * 300;
+      bgPositions[i * 3 + 1] = (Math.random() - 0.5) * 300;
+      bgPositions[i * 3 + 2] = (Math.random() - 0.5) * 300;
+    }
+
+    bgGeometry.setAttribute('position', new THREE.BufferAttribute(bgPositions, 3));
+    const bgMaterial = new THREE.PointsMaterial({
+      size: 0.8,
+      map: roundStarTexture,
+      transparent: true,
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    const bgStars = new THREE.Points(bgGeometry, bgMaterial);
+    scene.add(bgStars);
+
+    // Galaxia
+    const particleCount = 28000;
+    const galaxyGeometry = new THREE.BufferGeometry();
+    const finalPositions = new Float32Array(particleCount * 3);
+    const currentPositions = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+
+    const colorChoices = [
+      new THREE.Color('#ffffff'),
+      new THREE.Color('#ff00ab'),
+      new THREE.Color('#c77dff'),
+      new THREE.Color('#7928ca')
+    ];
+
+    const arms = 3;
+    for (let i = 0; i < particleCount; i++) {
+      const r = Math.pow(Math.random(), 2) * 22;
+      const armIndex = i % arms;
+      const armAngle = (armIndex * 2 * Math.PI) / arms;
+      const spiralAngle = r * 0.35;
+
+      const spreadX = (Math.random() - 0.5) * (r * 0.3);
+      const spreadY = (Math.random() - 0.5) * (r * 0.2);
+      const spreadZ = (Math.random() - 0.5) * (r * 0.3);
+
+      const x = Math.cos(armAngle + spiralAngle) * r + spreadX;
+      const y = spreadY;
+      const z = Math.sin(armAngle + spiralAngle) * r + spreadZ;
+
+      finalPositions[i * 3] = x;
+      finalPositions[i * 3 + 1] = y;
+      finalPositions[i * 3 + 2] = z;
+
+      currentPositions[i * 3] = (Math.random() - 0.5) * 0.5;
+      currentPositions[i * 3 + 1] = (Math.random() - 0.5) * 0.5;
+      currentPositions[i * 3 + 2] = (Math.random() - 0.5) * 0.5;
+
+      const baseColor = colorChoices[Math.floor(Math.random() * colorChoices.length)];
+      colors[i * 3] = baseColor.r;
+      colors[i * 3 + 1] = baseColor.g;
+      colors[i * 3 + 2] = baseColor.b;
+    }
+
+    galaxyGeometry.setAttribute('position', new THREE.BufferAttribute(currentPositions, 3));
+    galaxyGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const galaxyMaterial = new THREE.PointsMaterial({
+      size: 0.35,
+      map: roundStarTexture,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+
+    const galaxyGroup = new THREE.Group();
+    const galaxyMesh = new THREE.Points(galaxyGeometry, galaxyMaterial);
+    galaxyGroup.add(galaxyMesh);
+
+    // Estrella Central Diamante
+    const starCoreGroup = new THREE.Group();
+
+    const innerCoreGeo = new THREE.SphereGeometry(0.7, 32, 32);
+    const innerCoreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    starCoreGroup.add(new THREE.Mesh(innerCoreGeo, innerCoreMat));
+
+    const haloCoreGeo = new THREE.SphereGeometry(1.5, 32, 32);
+    const haloCoreMat = new THREE.MeshBasicMaterial({
+      color: 0xff00ab,
+      transparent: true,
+      opacity: 0.45,
+      blending: THREE.AdditiveBlending
+    });
+    starCoreGroup.add(new THREE.Mesh(haloCoreGeo, haloCoreMat));
+
+    function createDiamondSpike(length, width, colorVal) {
+      const shape = new THREE.Shape();
+      shape.moveTo(0, length / 2);
+      shape.lineTo(width / 2, 0);
+      shape.lineTo(0, -length / 2);
+      shape.lineTo(-width / 2, 0);
+      shape.closePath();
+
+      const geom = new THREE.ShapeGeometry(shape);
+      const mat = new THREE.MeshBasicMaterial({
+        color: colorVal,
+        transparent: true,
+        opacity: 0.85,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide
+      });
+      return new THREE.Mesh(geom, mat);
+    }
+
+    const spikeGroup1 = new THREE.Group();
+    const verticalSpike = createDiamondSpike(10, 0.8, 0xffa3f0);
+    const horizontalSpike = createDiamondSpike(10, 0.8, 0xffa3f0);
+    horizontalSpike.rotation.z = Math.PI / 2;
+    spikeGroup1.add(verticalSpike, horizontalSpike);
+    starCoreGroup.add(spikeGroup1);
+
+    const spikeGroup2 = new THREE.Group();
+    const diagSpike1 = createDiamondSpike(6, 0.5, 0xc77dff);
+    const diagSpike2 = createDiamondSpike(6, 0.5, 0xc77dff);
+    diagSpike1.rotation.z = Math.PI / 4;
+    diagSpike2.rotation.z = -Math.PI / 4;
+    spikeGroup2.add(diagSpike1, diagSpike2);
+    starCoreGroup.add(spikeGroup2);
+
+    galaxyGroup.add(starCoreGroup);
+    scene.add(galaxyGroup);
+
+    // Nave Espacial (UFO)
+    const ufoGroup = new THREE.Group();
+
+    const domeGeo = new THREE.SphereGeometry(0.8, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+    const domeMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.85 });
+    const dome = new THREE.Mesh(domeGeo, domeMat);
+    dome.position.y = 0.2;
+    ufoGroup.add(dome);
+
+    const discGeo = new THREE.CylinderGeometry(2, 0.6, 0.4, 16);
+    const discMat = new THREE.MeshBasicMaterial({ color: 0xff00ab });
+    const disc = new THREE.Mesh(discGeo, discMat);
+    ufoGroup.add(disc);
+
+    const ufoLightGeo = new THREE.SphereGeometry(0.5, 16, 16);
+    const ufoLightMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+    const ufoLightMesh = new THREE.Mesh(ufoLightGeo, ufoLightMat);
+    ufoLightMesh.position.y = -0.3;
+    ufoGroup.add(ufoLightMesh);
+
+    ufoGroup.scale.set(0.4, 0.4, 0.4);
+    ufoGroup.visible = false;
+    scene.add(ufoGroup);
+
+    let ufoActive = false;
+    let ufoProgress = 0;
+    const ufoStart = new THREE.Vector3();
+    const ufoEnd = new THREE.Vector3();
+
+    function triggerUFO() {
+      ufoActive = true;
+      ufoProgress = 0;
+      ufoGroup.visible = true;
+
+      const side = Math.random() > 0.5 ? 1 : -1;
+      ufoStart.set(-60 * side, 10 + Math.random() * 15, (Math.random() - 0.5) * 30);
+      ufoEnd.set(60 * side, -5 + Math.random() * 10, (Math.random() - 0.5) * 30);
+
+      ufoGroup.position.copy(ufoStart);
+    }
+
+    function updateUFO() {
+      if (!ufoActive) {
+        if (Math.random() < 0.002) triggerUFO();
+        return;
+      }
+
+      ufoProgress += 0.0025;
+      ufoGroup.position.lerpVectors(ufoStart, ufoEnd, ufoProgress);
+
+      ufoGroup.rotation.y += 0.03;
+      ufoGroup.rotation.z = Math.sin(ufoProgress * Math.PI * 4) * 0.12;
+
+      if (ufoProgress >= 1) {
+        ufoActive = false;
+        ufoGroup.visible = false;
+      }
+    }
+
+    // Estrellas Fugaces
+    const shootingStarsCount = 4;
+    const shootingStars = [];
+
+    for (let i = 0; i < shootingStarsCount; i++) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+
+      const material = new THREE.LineBasicMaterial({
+        color: 0xff77e9,
+        transparent: true,
+        opacity: 0
+      });
+
+      const line = new THREE.Line(geometry, material);
+      scene.add(line);
+
+      shootingStars.push({
+        line: line,
+        active: false,
+        speed: 0.8,
+        head: new THREE.Vector3(),
+        tail: new THREE.Vector3(),
+        dir: new THREE.Vector3()
+      });
+    }
+
+    function resetShootingStar(star) {
+      star.active = true;
+      star.line.material.opacity = 1;
+      
+      const startX = (Math.random() - 0.5) * 80;
+      const startY = 30 + Math.random() * 20;
+      const startZ = (Math.random() - 0.5) * 80;
+
+      star.head.set(startX, startY, startZ);
+      star.tail.copy(star.head);
+      star.dir.set(-1 - Math.random(), -1 - Math.random(), -0.5).normalize();
+      star.speed = 0.9 + Math.random() * 0.6;
+    }
+
+    function updateShootingStars() {
+      shootingStars.forEach(star => {
+        if (!star.active) {
+          if (Math.random() < 0.015) resetShootingStar(star);
+          return;
+        }
+
+        star.head.addScaledVector(star.dir, star.speed);
+        star.tail.addScaledVector(star.dir, star.speed * 0.82);
+
+        const posAttr = star.line.geometry.attributes.position;
+        posAttr.setXYZ(0, star.head.x, star.head.y, star.head.z);
+        posAttr.setXYZ(1, star.tail.x, star.tail.y, star.tail.z);
+        posAttr.needsUpdate = true;
+
+        star.line.material.opacity -= 0.012;
+
+        if (star.line.material.opacity <= 0) {
+          star.active = false;
+        }
+      });
+    }
+
+    // Ubicaciones 3D de cada etiqueta alrededor del centro
+    const labelData = [
+      { id: 'central-core', pos: new THREE.Vector3(0, 2.5, 0) },
+      // Fotos en órbita
+      { id: 'photo-label-1', pos: new THREE.Vector3(-8, 5.0, 5) },
+      { id: 'photo-label-2', pos: new THREE.Vector3(9, -3.0, -6) },
+      // Notas
+      { id: 'label-1', pos: new THREE.Vector3(-6, 2.5, 8) },
+      { id: 'label-2', pos: new THREE.Vector3(-14, -1.5, 3) },
+      { id: 'label-3', pos: new THREE.Vector3(-11, 3.5, -9) },
+      { id: 'label-4', pos: new THREE.Vector3(12, 1.8, -8) },
+      { id: 'label-5', pos: new THREE.Vector3(13, -2.2, 7) },
+      { id: 'label-6', pos: new THREE.Vector3(2, 4.0, 14) }
+    ];
+
+    const tempV = new THREE.Vector3();
+    function updateLabels() {
+      labelData.forEach(item => {
+        const elem = document.getElementById(item.id);
+        if (!elem) return;
+
+        tempV.copy(item.pos);
+        tempV.applyMatrix4(galaxyGroup.matrixWorld);
+        tempV.project(camera);
+
+        if (tempV.z > 1) {
+          elem.style.display = 'none';
+          return;
+        } else if (document.getElementById('ui-layer').style.display === 'block') {
+          elem.style.display = 'flex';
+        }
+
+        const x = (tempV.x * .5 + .5) * window.innerWidth;
+        const y = (tempV.y * -.5 + .5) * window.innerHeight;
+
+        elem.style.left = `${x}px`;
+        elem.style.top = `${y}px`;
+      });
+    }
+
+    // Bucle de Animación
+    let time = 0;
+    function animate() {
+      requestAnimationFrame(animate);
+      time += 0.02;
+
+      if (isForming && formationProgress < 1) {
+        formationProgress += 0.008;
+        const easeProgress = Math.sin((formationProgress * Math.PI) / 2);
+
+        const posAttr = galaxyGeometry.attributes.position;
+        for (let i = 0; i < particleCount; i++) {
+          posAttr.setXYZ(
+            i,
+            finalPositions[i * 3] * easeProgress,
+            finalPositions[i * 3 + 1] * easeProgress,
+            finalPositions[i * 3 + 2] * easeProgress
+          );
+        }
+        posAttr.needsUpdate = true;
+      }
+
+      galaxyGroup.rotation.y += isForming ? 0.0025 : 0.0005;
+      bgStars.rotation.y -= 0.0002;
+
+      spikeGroup1.rotation.z += 0.003;
+      spikeGroup2.rotation.z -= 0.002;
+
+      const pulseScale = 1 + Math.sin(time * 3) * 0.12;
+      starCoreGroup.scale.set(pulseScale, pulseScale, pulseScale);
+
+      pointLight.intensity = 3 + Math.sin(time * 3) * 1.5;
+
+      updateShootingStars();
+      updateUFO();
+      controls.update();
+      updateLabels();
+
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    animate();
+  </script>
+</body>
+</html>
